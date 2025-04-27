@@ -146,10 +146,64 @@ def organize_images_by_year(images_dict):
     pass
 
 # --- PDF Generation (Optional) ---
-def generate_pdf_for_year(year_folder):
-    """Genera un PDF con todas las imágenes de un año."""
-    # TODO: Implementar
-    pass
+import img2pdf
+from PyPDF2 import PdfMerger
+
+def generar_pdf_seccion(seccion_folder, salida_pdf=None):
+    """
+    Genera un único PDF combinando todas las imágenes y PDFs de la carpeta (recursivo).
+    Args:
+        seccion_folder (str): Carpeta de la sección (ej: descargas/algebra/primeros_parciales/2024)
+        salida_pdf (str, opcional): Ruta del PDF final. Si es None, se genera nombre automático.
+    """
+    import os, tempfile, glob
+    imagenes_ext = ('.jpg', '.jpeg', '.png')
+    pdfs = []
+    temp_files = []
+    # Recorrer recursivamente
+    for root, _, files in os.walk(seccion_folder):
+        files = sorted(files)
+        for fname in files:
+            ruta = os.path.join(root, fname)
+            if fname.lower().endswith(imagenes_ext):
+                # Convertir imagen a PDF temporal
+                temp_fd, temp_pdf = tempfile.mkstemp(suffix='.pdf')
+                os.close(temp_fd)
+                with open(temp_pdf, 'wb') as f:
+                    f.write(img2pdf.convert(ruta))
+                pdfs.append(temp_pdf)
+                temp_files.append(temp_pdf)
+            elif fname.lower().endswith('.pdf'):
+                pdfs.append(ruta)
+    if not pdfs:
+        print(f"No se encontraron imágenes ni PDFs en {seccion_folder}")
+        return None
+    if salida_pdf is None:
+        nombre = os.path.basename(os.path.normpath(seccion_folder))
+        salida_pdf = os.path.join(seccion_folder, f"{nombre}.pdf")
+    merger = PdfMerger()
+    for pdf in pdfs:
+        try:
+            merger.append(pdf)
+        except Exception as e:
+            print(f"[ERROR] No se pudo agregar {pdf}: {e}")
+    merger.write(salida_pdf)
+    merger.close()
+    # Limpiar temporales
+    for temp in temp_files:
+        try:
+            os.remove(temp)
+        except Exception:
+            pass
+    print(f"PDF generado: {salida_pdf}")
+    return salida_pdf
+
+# --- Test rápido ---
+if __name__ == "__main__":
+    # Cambia esta ruta por una carpeta de sección real con imágenes y PDFs
+    carpeta = "descargas/algebra/primeros_parciales/2024"
+    generar_pdf_seccion(carpeta)
+
 
 # --- Main Execution ---
 def main():

@@ -79,27 +79,79 @@ def menu_parciales(estructura, seccion, anio):
         if seleccionados:
             return seleccionados
 
-def main():
-    url, rel_url = input_url()
-    estructura = download_and_analyze(url)
+from pdf_utils import generar_pdf_seccion
+
+def navegar_carpetas_y_generar_pdf(base_dir='descargas'):
+    actual = base_dir
     while True:
-        seccion = menu_secciones(estructura)
-        anio = menu_anios(estructura, seccion)
-        if anio is None:
+        clear()
+        if not os.path.exists(actual):
+            print(f"No existe la carpeta {actual}")
+            input("Presione Enter para volver...")
+            return
+        items = sorted(os.listdir(actual))
+        dirs = [d for d in items if os.path.isdir(os.path.join(actual, d))]
+        print(f"Carpeta actual: {actual}\nSeleccione una carpeta para navegar o generar PDF:")
+        for i, d in enumerate(dirs):
+            print(f"  [{i+1}] {d}/")
+        print(f"  [g] Generar PDF de esta carpeta")
+        if os.path.abspath(actual) != os.path.abspath(base_dir):
+            print(f"  [..] Subir un nivel")
+        print(f"  [0] Volver al menú principal")
+        op = input("Opción: ").strip()
+        if op == "0":
+            return
+        if op == "..":
+            if os.path.abspath(actual) == os.path.abspath(base_dir):
+                continue
+            actual = os.path.dirname(actual)
             continue
-        seleccionados = menu_parciales(estructura, seccion, anio)
-        if seleccionados is None:
+        if op == "g":
+            generar_pdf_seccion(actual)
+            input("\nPresione Enter para continuar...")
             continue
-        # Extraer materia de la ruta relativa (último segmento no vacío antes de index.asp, o penúltimo si termina en /index.asp)
-        partes = [p for p in rel_url.split("/") if p and not p.lower().endswith(".asp")]
-        materia = partes[-1] if partes else "materia"
-        destino = input(f"Carpeta destino [descargas/{materia}/{seccion.replace(' ','_').lower()}/{anio}]: ").strip()
-        if not destino:
-            destino = os.path.join("descargas", materia, seccion.replace(' ','_').lower(), anio)
-        print(f"Descargando {len(seleccionados)} archivos a {destino} ...")
-        base_url = BASE_URL + os.path.dirname(rel_url) + "/"
-        download_links(seleccionados, base_url, destino)
-        input("\nDescarga finalizada. Presione Enter para volver al menú principal...")
+        if op.isdigit() and 1 <= int(op) <= len(dirs):
+            actual = os.path.join(actual, dirs[int(op)-1])
+            continue
+
+def main():
+    while True:
+        clear()
+        print("--- Altillo Scraper CLI ---")
+        print("[1] Descargar exámenes")
+        print("[2] Generar PDF a partir de carpeta descargada")
+        print("[0] Salir")
+        op = input("Opción: ").strip()
+        if op == "1":
+            url, rel_url = input_url()
+            estructura = download_and_analyze(url)
+            while True:
+                seccion = menu_secciones(estructura)
+                anio = menu_anios(estructura, seccion)
+                if anio is None:
+                    break
+                seleccionados = menu_parciales(estructura, seccion, anio)
+                if seleccionados is None:
+                    break
+                partes = [p for p in rel_url.split("/") if p and not p.lower().endswith(".asp")]
+                materia = partes[-1] if partes else "materia"
+                destino = input(f"Carpeta destino [descargas/{materia}/{seccion.replace(' ','_').lower()}/{anio}]: ").strip()
+                if not destino:
+                    destino = os.path.join("descargas", materia, seccion.replace(' ','_').lower(), anio)
+                print(f"Descargando {len(seleccionados)} archivos a {destino} ...")
+                base_url = BASE_URL + os.path.dirname(rel_url) + "/"
+                download_links(seleccionados, base_url, destino)
+                input("\nDescarga finalizada. Presione Enter para volver al menú principal...")
+                break
+        elif op == "2":
+            navegar_carpetas_y_generar_pdf()
+        elif op == "0":
+            print("¡Hasta luego!")
+            break
+        else:
+            print("Opción inválida.")
+            input("Presione Enter para continuar...")
+
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
 requests
 beautifulsoup4
 img2pdf
-fpdf
+PyPDF2

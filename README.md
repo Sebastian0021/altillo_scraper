@@ -29,6 +29,7 @@ Scraper universal para descargar exámenes de cualquier materia disponible en [A
 ---
 
 ## 📋 ¿Qué hace este scraper?
+
 - Permite elegir la materia y página de exámenes de Altillo (ej: `uba/cbc/algebra/index.asp`).
 - Analiza la página y te muestra las secciones, años y parciales disponibles.
 - Permite seleccionar exactamente qué descargar (secciones, años, parciales).
@@ -37,6 +38,7 @@ Scraper universal para descargar exámenes de cualquier materia disponible en [A
   ```
   descargas/<materia>/<seccion>/<año>/
   ```
+
   Ejemplo: `descargas/algebra/primeros_parciales/2024/`
 
 - Mantiene los nombres originales de los archivos.
@@ -71,6 +73,7 @@ descargas/
 ---
 
 ## ✅ Buenas prácticas y recomendaciones
+
 - **No subas tu entorno virtual ni archivos descargados a GitHub** (ya están ignorados en `.gitignore`).
 - Si quieres compartir el proyecto, solo sube el código fuente y el `requirements.txt`.
 - Puedes modificar el código para adaptarlo a otras estructuras de Altillo o agregar nuevas funciones.
@@ -78,5 +81,6 @@ descargas/
 ---
 
 ## 📝 Créditos y licencia
+
 - Proyecto desarrollado para facilitar el acceso organizado a exámenes de Altillo.com.
 - Uso educativo.
