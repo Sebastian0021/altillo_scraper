@@ -10,7 +10,7 @@ def generar_pdf_seccion(seccion_folder, salida_pdf=None):
         seccion_folder (str): Carpeta de la sección (ej: descargas/algebra/primeros_parciales/2024)
         salida_pdf (str, opcional): Ruta del PDF final. Si es None, se genera nombre automático.
     """
-    import os
+
     imagenes_ext = ('.jpg', '.jpeg', '.png')
     pdfs = []
     temp_files = []
