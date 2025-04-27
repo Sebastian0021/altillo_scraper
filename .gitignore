@@ -62,6 +62,7 @@ coverage.xml
 .vscode/
 
 # Local files and folderss
+page_tmp.html
 scrap.txt
 scrap_tmp.txt
 descargas/

@@ -23,64 +23,90 @@ PDF_LIB = try_import_pdf()
 def get_sections_years_links_from_file(html_path):
     """
     Parsea el archivo local HTML y retorna un dict {seccion: {año: [links]}} de manera dinámica.
+    Ahora detecta secciones por sus anclas, independientemente de la estructura HTML.
     """
     print(f"Analizando archivo local: {html_path}")
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup, NavigableString, Tag
     import re
     with open(html_path, encoding="latin1") as f:
         soup = BeautifulSoup(f, 'html.parser')
 
     result = {}
-    # Buscar el <ul> principal
-    main_ul = soup.find('ul')
-    if not main_ul:
-        print("No se encontró el <ul> principal")
-        return result
-
-    for li in main_ul.find_all('li', recursive=False):
-        # Detectar la sección por <a name=...>
-        section_a = li.find('a', attrs={'name': True})
-        if not section_a:
-            continue
+    
+    # Encontrar todas las secciones principales (buscar por anclas 'a name=')
+    section_anchors = soup.find_all('a', attrs={'name': True})
+    
+    for section_a in section_anchors:
         section_name = section_a.get('name').strip()
         section_title = section_a.get_text(strip=True)
-
-        # Procesar el <ul> hijo para extraer años y links mezclados en cada <li>
-        child_ul = li.find('ul')
-        if not child_ul:
-            continue
-
-        years_links = {}
-        for child_li in child_ul.find_all('li', recursive=False):
-            # Parser secuencial: recorre los hijos del <li> y asocia links al año correcto
-            from bs4 import NavigableString, Tag
-            current_year = None
-            for node in child_li.descendants:
-                if isinstance(node, NavigableString):
-                    # Buscar año en el texto
-                    matches = re.findall(r'(20\d{2}|19\d{2})', str(node))
-                    if matches:
-                        current_year = matches[-1]
-                elif isinstance(node, Tag) and node.name == 'a' and node.has_attr('href') and node['href'].endswith(('.asp', '.pdf')):
-                    if current_year:
-                        if current_year not in years_links:
-                            years_links[current_year] = []
-                        # Guardar tupla (texto, href)
-                        years_links[current_year].append((node.get_text(strip=True), node['href']))
-            # Si algún año no tiene links, no lo agregamos
-        if years_links:
-            result[section_title] = years_links
-
-        # Solo agregar si hay años válidos
-        if years_links:
-            result[section_title] = years_links
-
-    print("\nEstructura detectada (sección > año > cantidad de links):")
+        
+        # Buscar la estructura de años que sigue a esta sección
+        # Para manejar diferentes estructuras, buscamos cualquier <ul> que sea hermano o descendiente cercano
+        
+        # Primero, verificamos si estamos en un <li> que contiene un <ul>
+        parent_li = section_a.find_parent('li')
+        if parent_li:
+            child_ul = parent_li.find('ul')
+            if child_ul:
+                years_links = process_years_section(child_ul)
+                if years_links:
+                    result[section_title] = years_links
+                continue
+        
+        # Si no, buscamos el siguiente <ul> después de esta sección
+        next_ul = None
+        # Verificar si está en un <p> o <font> o similar
+        container = section_a.find_parent(['p', 'font', 'b'])
+        if container:
+            # Buscar el siguiente <ul> después de este contenedor
+            sibling = container.find_next_sibling()
+            while sibling and not next_ul:
+                if sibling.name == 'ul':
+                    next_ul = sibling
+                    break
+                sibling = sibling.find_next_sibling()
+        
+        # Si encontramos un <ul>, procesarlo
+        if next_ul:
+            years_links = process_years_section(next_ul)
+            if years_links:
+                result[section_title] = years_links
+    
+    # Mostrar la estructura detectada
+    print("Estructura detectada (sección > año > cantidad de links):")
     for section, years in result.items():
         print(f"{section}:")
         for year, links in years.items():
             print(f"  {year}: {len(links)} links")
     return result
+
+def process_years_section(ul_element):
+    """
+    Procesa un elemento <ul> que contiene años y links
+    """
+    import re
+    from bs4 import NavigableString, Tag
+    
+    years_links = {}
+    
+    for li in ul_element.find_all('li', recursive=False):
+        # Parser secuencial: recorre los hijos del <li> y asocia links al año correcto
+        current_year = None
+        
+        for node in li.descendants:
+            if isinstance(node, NavigableString):
+                # Buscar año en el texto
+                matches = re.findall(r'(20\d{2}|19\d{2})', str(node))
+                if matches:
+                    current_year = matches[-1]
+            elif isinstance(node, Tag) and node.name == 'a' and node.has_attr('href') and node['href'].endswith(('.asp', '.pdf')):
+                if current_year:
+                    if current_year not in years_links:
+                        years_links[current_year] = []
+                    # Guardar tupla (texto, href)
+                    years_links[current_year].append((node.get_text(strip=True), node['href']))
+    
+    return years_links
 
 def get_images_from_exam_file(html_path):
     """
