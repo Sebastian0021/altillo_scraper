@@ -2,7 +2,8 @@
 
 Scraper universal para descargar exámenes de cualquier materia disponible en [Altillo.com](https://www.altillo.com/examenes/), con organización automática por materia, sección y año. Interfaz interactiva por consola.
 
-> [!IMPORTANT] > **Requisito:** Debes tener [Python 3.8+](https://www.python.org/downloads/) instalado en tu computadora.
+> [!IMPORTANT]
+> **Requisito:** Debes tener [Python 3.8+](https://www.python.org/downloads/) instalado en tu computadora.
 >
 > _En el futuro se planea ofrecer un ejecutable para usuarios sin experiencia en la terminal o entornos de desarrollo._
 
