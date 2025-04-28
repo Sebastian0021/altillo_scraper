@@ -2,3 +2,5 @@ requests
 beautifulsoup4
 img2pdf
 PyPDF2
+rich
+readchar

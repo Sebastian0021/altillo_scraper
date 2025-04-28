@@ -2,19 +2,58 @@ import os
 import sys
 import requests
 from main import get_sections_years_links_from_file, save_scrap_analysis, download_links
+from rich.console import Console
+from rich.table import Table
+from rich.style import Style
+import readchar
 
 BASE_URL = "https://www.altillo.com/examenes/"
+
+console = Console()
+
+def menu_dinamico_rich(opciones, titulo="Seleccione una opción:"):
+    '''
+    Muestra un menú navegable con flechas y Rich. Devuelve el índice de la opción seleccionada.
+    '''
+    seleccion = 0
+    while True:
+        console.clear()
+        console.rule(f"[bold cyan]{titulo}")
+        for i, opcion in enumerate(opciones):
+            if i == seleccion:
+                console.print(f"> [underline][bold green]{opcion}[/bold green][/underline]")
+            else:
+                console.print(f"  {opcion}")
+        # Barra decorativa SIEMPRE visible abajo
+        console.rule("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
+        key = readchar.readkey()
+        if key == readchar.key.UP:
+            seleccion = (seleccion - 1) % len(opciones)
+        elif key == readchar.key.DOWN:
+            seleccion = (seleccion + 1) % len(opciones)
+        elif key == readchar.key.ENTER or key == "\r" or key == "\n":
+            return seleccion
+        elif key == readchar.key.CTRL_C:
+            console.print("[red]Cancelado por el usuario.[/red]")
+            sys.exit(0)
 
 def clear():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def input_url():
-    clear()
-    print("Ingrese la ruta relativa de la página de exámenes a partir de: https://www.altillo.com/examenes/")
-    print("Ejemplo: uba/cbc/algebra/index.asp")
-    rel_url = input("Ruta: ").strip()
-    full_url = BASE_URL + rel_url
-    return full_url, rel_url
+    while True:
+        console.clear()
+        console.rule("[bold cyan]Ingrese la ruta relativa de la página de exámenes")
+        console.print("[white]Ingrese la parte de la URL de la página de los parciales de altillo.com luego de 'https://www.altillo.com/examenes/'[/white]", style="bold")
+        console.print("")
+        console.print("Ejemplo: uba/cbc/algebra/index.asp -> https://www.altillo.com/examenes/uba/cbc/algebra/index.asp", style="dim")
+        console.rule("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
+        rel_url = console.input("[bold yellow]Ruta[/bold yellow]: ").strip()
+        if not rel_url:
+            console.print("[red]La ruta no puede estar vacía. Intente nuevamente.[/red]")
+            continue
+        full_url = BASE_URL + rel_url
+        return full_url, rel_url
 
 def download_and_analyze(url, local_filename="page_tmp.html"):
     clear()
@@ -29,134 +68,118 @@ def download_and_analyze(url, local_filename="page_tmp.html"):
     return estructura
 
 def menu_secciones(estructura):
+    secciones = list(estructura.keys())
+    opciones = secciones + ["Volver al menú principal"]
     while True:
-        clear()
-        secciones = list(estructura.keys())
-        print("Seleccione la sección:")
-        for i, s in enumerate(secciones):
-            print(f"  [{i+1}] {s}")
-        print("  [0] Volver al menú principal")
-        op = input("Opción: ").strip()
-        if op == "0":
+        idx = menu_dinamico_rich(opciones, titulo="Seleccione la sección:")
+        if idx == len(opciones) - 1:
             return "menu_principal"
-        if op.isdigit() and 1 <= int(op) <= len(secciones):
-            return secciones[int(op)-1]
+        else:
+            return secciones[idx]
 
 def menu_anios(estructura, seccion):
+    anios = sorted(list(estructura[seccion].keys()))
+    opciones = [f"{anio}" for anio in anios] + ["Descargar TODOS los años", "Descargar un rango", "Descargar varios años", "Volver"]
     while True:
-        clear()
-        anios = sorted(list(estructura[seccion].keys()))
-        print(f"Sección: {seccion}")
-        print("Seleccione el/los año/s a descargar:")
-        for i, anio in enumerate(anios):
-            print(f"  [{i+1}] {anio}")
-        print("  [t] Descargar TODOS los años")
-        print("  [rango] Descargar un rango (ej: 2020-2023)")
-        print("  [varios] Descargar varios años separados por coma (ej: 2020,2022,2023)")
-        print("  [0] Volver")
-        op = input("Año/s: ").strip().lower()
-        if op == "0":
+        seleccion = menu_dinamico_rich(opciones, titulo=f"Sección: {seccion}\nSeleccione el/los año/s a descargar:")
+        if seleccion == len(opciones) - 1:  # Volver
             return None
-        if op == "t":
-            return anios
-        # Rango de años
-        if '-' in op:
+        elif seleccion == len(opciones) - 2:  # Descargar varios años
+            entrada = console.input("[bold yellow]Ingrese años separados por coma (ej: 2020,2022,2023): [/bold yellow]").strip()
+            seleccionados = [a for a in anios if a in [x.strip() for x in entrada.split(',')]]
+            if seleccionados:
+                return seleccionados
+            console.print("[red]Años inválidos.[/red]")
+            console.input("Presione Enter para continuar...")
+            continue
+        elif seleccion == len(opciones) - 3:  # Descargar un rango
+            entrada = console.input("[bold yellow]Ingrese rango (ej: 2020-2023): [/bold yellow]").strip()
             try:
-                ini, fin = op.split('-')
+                ini, fin = entrada.split('-')
                 ini, fin = int(ini), int(fin)
                 seleccionados = [a for a in anios if ini <= int(a) <= fin]
                 if seleccionados:
                     return seleccionados
             except Exception:
                 pass
-            print("Rango inválido.")
-            input("Presione Enter...")
+            console.print("[red]Rango inválido.[/red]")
+            console.input("Presione Enter para continuar...")
             continue
-        # Varios años selectos
-        if ',' in op:
-            seleccionados = [a for a in anios if a in [x.strip() for x in op.split(',')]]
-            if seleccionados:
-                return seleccionados
-            print("Años inválidos.")
-            input("Presione Enter...")
-            continue
-        # Selección individual
-        if op.isdigit() and 1 <= int(op) <= len(anios):
-            return [anios[int(op)-1]]
-        if op in anios:
-            return [op]
-        print("Opción inválida.")
-        input("Presione Enter...")
+        elif seleccion == len(opciones) - 4:  # Descargar TODOS los años
+            return anios
+        else:
+            return [anios[seleccion]]
 
 def menu_parciales(estructura, seccion, anio):
+    links = estructura[seccion][anio]
+    opciones = [f"{i+1}. {' '.join(link_text.split())} - {link_href}" for i, (link_text, link_href) in enumerate(links)] + ["Descargar TODOS los parciales del año", "Volver"]
     while True:
-        clear()
-        links = estructura[seccion][anio]
-        print(f"Sección: {seccion} | Año: {anio}")
-        print("Seleccione los parciales a descargar (separados por coma, o 't' para TODOS los parciales del año):")
-        for i, (link_text, link_href) in enumerate(links):
-            clean_text = ' '.join(link_text.split())  # Elimina saltos de línea y espacios extra
-            print(f"  [{i+1}] {clean_text} - {link_href}")
-        print("  [t] Descargar TODOS los parciales del año")
-        print("  [0] Volver")
-        seleccion = input("Parciales: ").strip().lower()
-        if seleccion == "0":
+        seleccion = menu_dinamico_rich(opciones, titulo=f"Sección: {seccion} | Año: {anio}\nSeleccione los parciales a descargar:")
+        if seleccion == len(opciones) - 1:  # Volver
             return None
-        if seleccion == "":
-            continue
-        if seleccion == "t":
+        elif seleccion == len(opciones) - 2:  # Descargar TODOS
             return links
-        idxs = [int(x)-1 for x in seleccion.split(",") if x.strip().isdigit()]
-        seleccionados = [links[i] for i in idxs if 0 <= i < len(links)]
-        if seleccionados:
-            return seleccionados
+        else:
+            return [links[seleccion]]
 
 from pdf_utils import generar_pdf_seccion
 
 def navegar_carpetas_y_generar_pdf(base_dir='descargas'):
     actual = base_dir
     while True:
-        clear()
         if not os.path.exists(actual):
-            print(f"No existe la carpeta {actual}")
-            input("Presione Enter para volver...")
+            console.print(f"[red]No existe la carpeta {actual}[/red]")
+            console.input("Presione Enter para volver...")
             return
         items = sorted(os.listdir(actual))
         dirs = [d for d in items if os.path.isdir(os.path.join(actual, d))]
-        print(f"Carpeta actual: {actual}\nSeleccione una carpeta para navegar o generar PDF:")
-        for i, d in enumerate(dirs):
-            print(f"  [{i+1}] {d}/")
-        print(f"  [g] Generar PDF de esta carpeta")
+        acciones = ["[bold green]Generar PDF de esta carpeta[/bold green]"]
         if os.path.abspath(actual) != os.path.abspath(base_dir):
-            print(f"  [..] Subir un nivel")
-        print(f"  [0] Volver al menú principal")
-        op = input("Opción: ").strip()
-        if op == "0":
-            return
-        if op == "..":
-            if os.path.abspath(actual) == os.path.abspath(base_dir):
-                continue
+            acciones.append("[yellow]Carpeta anterior[/yellow]")
+        acciones.append("[red]Volver al menú principal[/red]")
+        opciones = [f"[bold blue]{d}/[/bold blue]" for d in dirs]
+        if opciones:
+            opciones.append("[dim]─────────────────────────────[/dim]")
+        opciones += acciones
+        seleccion = menu_dinamico_rich(
+            opciones,
+            titulo=f"[bold white]Carpeta actual:[/bold white] [bold cyan]{actual}[/bold cyan]\n[dim]Navegue con flechas y seleccione acción:[/dim]"
+        )
+        # Barra inferior de autoría
+        console.rule("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
+        # Si selecciona una carpeta, navega
+        if seleccion < len(dirs):
+            actual = os.path.join(actual, dirs[seleccion])
+            continue
+        # Si selecciona la línea separadora, no hace nada
+        if opciones[seleccion].startswith("[dim]"):
+            continue
+        # Acciones
+        accion_idx = seleccion - (len(dirs) + (1 if dirs else 0))
+        if acciones[accion_idx].startswith("[bold green]"):
+            generar_pdf_seccion(actual)
+            console.input("\nPresione Enter para continuar...")
+            continue
+        elif acciones[accion_idx].startswith("[yellow]"):
             actual = os.path.dirname(actual)
             continue
-        if op == "g":
-            generar_pdf_seccion(actual)
-            input("\nPresione Enter para continuar...")
-            continue
-        if op.isdigit() and 1 <= int(op) <= len(dirs):
-            actual = os.path.join(actual, dirs[int(op)-1])
-            continue
+        elif acciones[accion_idx].startswith("[red]"):
+            return
+
 
 def main():
+    opciones_menu = ["Descargar exámenes", "Generar PDF a partir de carpeta descargada", "Salir"]
     while True:
-        clear()
-        print("--- Altillo Scraper CLI ---")
-        print("[1] Descargar exámenes")
-        print("[2] Generar PDF a partir de carpeta descargada")
-        print("[0] Salir")
-        op = input("Opción: ").strip()
-        if op == "1":
+        seleccion = menu_dinamico_rich(opciones_menu, titulo="Altillo Scraper CLI")
+        console.rule("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
+        if seleccion == 0:  # Descargar exámenes
             url, rel_url = input_url()
-            estructura = download_and_analyze(url)
+            try:
+                estructura = download_and_analyze(url)
+            except Exception as e:
+                console.print(f"[red]Error al descargar o analizar la página: {e}[/red]")
+                console.input("[bold yellow]Presione Enter para volver al menú principal...[/bold yellow]")
+                continue
             while True:
                 seccion = menu_secciones(estructura)
                 if seccion == "menu_principal":
@@ -171,24 +194,19 @@ def main():
                         continue  # Saltar a otro año o volver a seleccionar sección
                     partes = [p for p in rel_url.split("/") if p and not p.lower().endswith(".asp")]
                     materia = partes[-1] if partes else "materia"
-                    destino = input(f"Carpeta destino [descargas/{materia}/{seccion.replace(' ','_').lower()}/{anio}]: ").strip()
-                    if not destino:
-                        destino = os.path.join("descargas", materia, seccion.replace(' ','_').lower(), anio)
-                    print(f"Descargando {len(seleccionados)} archivos a {destino} ...")
+                    destino = os.path.join("descargas", materia, seccion.replace(' ','_').lower(), anio)
+                    console.print(f"[bold yellow]Carpeta destino:[/bold yellow] [dim]{destino}[/dim]")
+                    console.print(f"Descargando {len(seleccionados)} archivos a {destino} ...", style="cyan")
                     base_url = BASE_URL + os.path.dirname(rel_url) + "/"
                     download_links(seleccionados, base_url, destino)
-                    input(f"\nDescarga finalizada para {anio}. Presione Enter para continuar...")
+                    console.input(f"[green]\nDescarga finalizada para {anio}. Presione Enter para continuar...[/green]")
                 # Al finalizar todos los años, vuelve a menú de secciones para seguir descargando
 
-
-        elif op == "2":
+        elif seleccion == 1:  # Generar PDF
             navegar_carpetas_y_generar_pdf()
-        elif op == "0":
-            print("¡Hasta luego!")
+        elif seleccion == 2:  # Salir
+            console.print("¡Hasta luego!", style="bold green")
             break
-        else:
-            print("Opción inválida.")
-            input("Presione Enter para continuar...")
 
 
 if __name__ == "__main__":

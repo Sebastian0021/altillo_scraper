@@ -294,57 +294,73 @@ import requests
 
 from bs4 import BeautifulSoup
 
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+from rich.console import Console
+
+console = Console()
+
 def download_links(links, base_url, out_dir):
     os.makedirs(out_dir, exist_ok=True)
-    for link_text, link_href in links:
-        if link_href.lower().endswith('.pdf'):
-            # Descargar PDF normal
-            url = link_href if link_href.startswith('http') else base_url + link_href
-            fname = os.path.join(out_dir, link_href.split('/')[-1])
-            print(f"Descargando PDF {link_text}: {url} -> {fname}")
-            try:
-                resp = requests.get(url)
-                resp.raise_for_status()
-                with open(fname, 'wb') as f:
-                    f.write(resp.content)
-                print(f"  OK")
-            except Exception as e:
-                print(f"  ERROR: {e}")
-        elif link_href.lower().endswith('.asp'):
-            # Descargar HTML y extraer imágenes
-            url = link_href if link_href.startswith('http') else base_url + link_href
-            print(f"Descargando examen {link_text}: {url}")
-            try:
-                resp = requests.get(url)
-                resp.raise_for_status()
-                soup = BeautifulSoup(resp.content, 'html.parser')
-                img_tags = soup.find_all('img')
-                if not img_tags:
-                    print("  No se encontraron imágenes en el examen.")
-                    continue
-                # Carpeta para este examen (sin .asp)
-                exam_name = os.path.splitext(link_href.split('/')[-1])[0]
-                exam_dir = os.path.join(out_dir, exam_name)
-                os.makedirs(exam_dir, exist_ok=True)
-                for img in img_tags:
-                    img_src = img.get('src')
-                    if not img_src:
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+        transient=True
+    ) as progress:
+        task = progress.add_task("Descargando archivos...", total=len(links))
+        for link_text, link_href in links:
+            if link_href.lower().endswith('.pdf'):
+                url = link_href if link_href.startswith('http') else base_url + link_href
+                fname = os.path.join(out_dir, link_href.split('/')[-1])
+                try:
+                    resp = requests.get(url)
+                    resp.raise_for_status()
+                    with open(fname, 'wb') as f:
+                        f.write(resp.content)
+                    progress.console.print(f"[green]✔ PDF descargado:[/green] {link_text} -> {fname}")
+                except Exception as e:
+                    progress.console.print(f"[red]✖ Error descargando PDF {link_text}: {e}[/red]")
+            elif link_href.lower().endswith('.asp'):
+                url = link_href if link_href.startswith('http') else base_url + link_href
+                try:
+                    resp = requests.get(url)
+                    resp.raise_for_status()
+                    soup = BeautifulSoup(resp.content, 'html.parser')
+                    img_tags = soup.find_all('img')
+                    if not img_tags:
+                        progress.console.print(f"[yellow]No se encontraron imágenes en el examen {link_text}.[/yellow]")
+                        progress.update(task, advance=1)
                         continue
-                    img_url = img_src if img_src.startswith('http') else base_url + img_src
-                    img_fname = os.path.join(exam_dir, img_src.split('/')[-1])
-                    print(f"  Descargando imagen: {img_url} -> {img_fname}")
-                    try:
-                        img_resp = requests.get(img_url)
-                        img_resp.raise_for_status()
-                        with open(img_fname, 'wb') as f:
-                            f.write(img_resp.content)
-                        print(f"    OK")
-                    except Exception as e:
-                        print(f"    ERROR: {e}")
-            except Exception as e:
-                print(f"  ERROR: {e}")
-        else:
-            print(f"Tipo de archivo no soportado: {link_href}")
+                    exam_name = os.path.splitext(link_href.split('/')[-1])[0]
+                    exam_dir = os.path.join(out_dir, exam_name)
+                    os.makedirs(exam_dir, exist_ok=True)
+                    parcial_name = str(link_text)[:22]
+                    img_task = progress.add_task(f"Imágenes de {parcial_name}", total=len(img_tags))
+                    for img in img_tags:
+                        img_src = img.get('src')
+                        if not img_src:
+                            progress.update(img_task, advance=1)
+                            continue
+                        img_url = img_src if img_src.startswith('http') else base_url + img_src
+                        img_fname = os.path.join(exam_dir, img_src.split('/')[-1])
+                        try:
+                            img_resp = requests.get(img_url)
+                            img_resp.raise_for_status()
+                            with open(img_fname, 'wb') as f:
+                                f.write(img_resp.content)
+                            progress.console.print(f"[green]  ✔ Imagen descargada:[/green] {img_url} -> {img_fname}")
+                        except Exception as e:
+                            progress.console.print(f"[red]  ✖ Error descargando imagen {img_url}: {e}[/red]")
+                        progress.update(img_task, advance=1)
+                    progress.remove_task(img_task)
+                except Exception as e:
+                    progress.console.print(f"[red]✖ Error descargando examen {link_text}: {e}[/red]")
+            else:
+                progress.console.print(f"[yellow]Tipo de archivo no soportado:[/yellow] {link_href}")
+            progress.update(task, advance=1)
 
 if __name__ == "__main__":
     # --- Análisis dinámico ---

@@ -2,6 +2,10 @@ import os
 import tempfile
 import img2pdf
 from PyPDF2 import PdfMerger
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+
+console = Console()
 
 def generar_pdf_seccion(seccion_folder, salida_pdf=None):
     """
@@ -25,46 +29,36 @@ def generar_pdf_seccion(seccion_folder, salida_pdf=None):
         if os.path.isdir(sub_path):
             imagenes = []
             sub_pdfs = []
-            for root, _, files in os.walk(sub_path):
-                files = sorted(files)
-                for fname in files:
-                    ruta = os.path.join(root, fname)
-                    if fname.lower().endswith(imagenes_ext):
-                        imagenes.append(ruta)
-                    elif fname.lower().endswith('.pdf'):
-                        sub_pdfs.append(ruta)
-            # Si hay imágenes, las convertimos a PDF único por parcial
-            if imagenes:
-                imagenes = sorted(imagenes)
-                temp_fd, temp_pdf = tempfile.mkstemp(suffix='.pdf')
-                os.close(temp_fd)
-                with open(temp_pdf, 'wb') as f:
-                    f.write(img2pdf.convert(imagenes))
-                pdfs.append(temp_pdf)
-                temp_files.append(temp_pdf)
-            # Agregar PDFs sueltos en la subcarpeta
-            for p in sorted(sub_pdfs):
-                pdfs.append(p)
-    if not pdfs:
-        print(f"No se encontraron imágenes ni PDFs en {seccion_folder}")
-        return None
-    if salida_pdf is None:
+    pdfs.sort()
+    if not salida_pdf:
         nombre = os.path.basename(os.path.normpath(seccion_folder))
         salida_pdf = os.path.join(seccion_folder, f"{nombre}.pdf")
     merger = PdfMerger()
-    for pdf in pdfs:
-        try:
-            merger.append(pdf)
-        except Exception as e:
-            print(f"[ERROR] No se pudo agregar {pdf}: {e}")
-    merger.write(salida_pdf)
-    merger.close()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold magenta]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        console=console,
+        transient=True
+    ) as progress:
+        merge_task = progress.add_task("Uniendo PDFs...", total=len(pdfs))
+        for pdf in pdfs:
+            try:
+                merger.append(pdf)
+                progress.console.print(f"[green]✔ Agregado:[/green] {os.path.basename(pdf)}")
+            except Exception as e:
+                progress.console.print(f"[red]✖ No se pudo agregar {pdf}: {e}[/red]")
+            progress.update(merge_task, advance=1)
+        merger.write(salida_pdf)
+        merger.close()
     for temp in temp_files:
         try:
             os.remove(temp)
         except Exception:
             pass
-    print(f"PDF generado: {salida_pdf}")
+    console.print(f"[bold green]PDF generado:[/bold green] [underline]{salida_pdf}[/underline]")
     return salida_pdf
 
 
