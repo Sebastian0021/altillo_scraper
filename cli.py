@@ -55,16 +55,14 @@ def input_url():
         full_url = BASE_URL + rel_url
         return full_url, rel_url
 
-def download_and_analyze(url, local_filename="page_tmp.html"):
+def download_and_analyze(url):
     clear()
     print(f"Descargando página: {url}")
     resp = requests.get(url)
     resp.raise_for_status()
-    with open(local_filename, "wb") as f:
-        f.write(resp.content)
+    html_content = resp.content.decode('latin1', errors='replace')
     print("Página descargada. Analizando...")
-    estructura = get_sections_years_links_from_file(local_filename)
-    save_scrap_analysis(estructura, out_path="scrap_tmp.txt")
+    estructura = get_sections_years_links_from_file(html_content=html_content)
     return estructura
 
 def menu_secciones(estructura):

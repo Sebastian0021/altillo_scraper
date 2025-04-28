@@ -20,16 +20,22 @@ def try_import_pdf():
 PDF_LIB = try_import_pdf()
 
 # --- Scraping Functions ---
-def get_sections_years_links_from_file(html_path):
+def get_sections_years_links_from_file(html_path=None, html_content=None):
     """
-    Parsea el archivo local HTML y retorna un dict {seccion: {año: [links]}} de manera dinámica.
-    Ahora detecta secciones por sus anclas, independientemente de la estructura HTML.
+    Parsea un archivo local HTML o un string HTML y retorna un dict {seccion: {año: [links]}} de manera dinámica.
+    Prioridad: html_content > html_path.
     """
-    print(f"Analizando archivo local: {html_path}")
     from bs4 import BeautifulSoup, NavigableString, Tag
     import re
-    with open(html_path, encoding="latin1") as f:
-        soup = BeautifulSoup(f, 'html.parser')
+    if html_content is not None:
+        soup = BeautifulSoup(html_content, 'html.parser')
+        print("Analizando HTML recibido en memoria")
+    elif html_path is not None:
+        print(f"Analizando archivo local: {html_path}")
+        with open(html_path, encoding="latin1") as f:
+            soup = BeautifulSoup(f, 'html.parser')
+    else:
+        raise ValueError("Se debe especificar html_path o html_content")
 
     result = {}
     
@@ -272,21 +278,30 @@ def fix_encoding(text):
     except (UnicodeEncodeError, UnicodeDecodeError):
         return text
 
-def save_scrap_analysis(structure, materia="Álgebra CBC", out_path="scrap.txt"):
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(f"Materia: {materia}\n\n")
-        for section, years in structure.items():
-            section_fixed = fix_encoding(section)
-            f.write(f"Sección: {section_fixed}\n")
-            for year, links in years.items():
-                year_fixed = fix_encoding(year)
-                f.write(f"  Año: {year_fixed}\n")
-                for link_text, link_href in links:
-                    link_text_fixed = fix_encoding(link_text)
-                    link_href_fixed = fix_encoding(link_href)
-                    f.write(f"    {link_text_fixed}: {link_href_fixed}\n")
-            f.write("\n")
-    print(f"\nAnálisis estructurado guardado en {out_path}\n")
+def save_scrap_analysis(structure, materia="Álgebra CBC", out_path=None):
+    """
+    Si out_path se especifica, guarda el análisis en disco. Si no, retorna el string generado.
+    """
+    lines = [f"Materia: {materia}\n\n"]
+    for section, years in structure.items():
+        section_fixed = fix_encoding(section)
+        lines.append(f"Sección: {section_fixed}\n")
+        for year, links in years.items():
+            year_fixed = fix_encoding(year)
+            lines.append(f"  Año: {year_fixed}\n")
+            for link_text, link_href in links:
+                link_text_fixed = fix_encoding(link_text)
+                link_href_fixed = fix_encoding(link_href)
+                lines.append(f"    {link_text_fixed}: {link_href_fixed}\n")
+        lines.append("\n")
+    result_str = ''.join(lines)
+    if out_path:
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(result_str)
+        print(f"\nAnálisis estructurado guardado en {out_path}\n")
+    else:
+        return result_str
+
 
 
 import os
@@ -362,9 +377,22 @@ def download_links(links, base_url, out_dir):
                 progress.console.print(f"[yellow]Tipo de archivo no soportado:[/yellow] {link_href}")
             progress.update(task, advance=1)
 
+
+
+def download_and_analyze(url, local_filename=None):
+    clear()
+    print(f"Descargando página: {url}")
+    resp = requests.get(url)
+    resp.raise_for_status()
+    html_content = resp.content.decode('latin1', errors='replace')
+    print("Página descargada. Analizando...")
+    estructura = get_sections_years_links_from_file(html_content=html_content)
+
+    return estructura
+
 if __name__ == "__main__":
     # --- Análisis dinámico ---
-    estructura = get_sections_years_links_from_file("page.html")
+    estructura = get_sections_years_links_from_file(html_path="page.html")
     save_scrap_analysis(estructura)
 
     # Descargar todos los primeros parciales del año 2024
