@@ -58,6 +58,19 @@ Scraper universal para descargar exámenes de cualquier materia disponible en [A
 
 ---
 
+## 📝 Generación de PDF desde carpetas descargadas
+
+El proyecto incluye una herramienta integrada en la CLI que permite generar un archivo PDF unificado a partir de los exámenes e imágenes descargados en una carpeta específica.
+
+**¿Cómo se utiliza?**
+
+1. Descarga los exámenes normalmente utilizando la CLI.
+2. Selecciona la opción correspondiente en el menú para "Generar PDF".
+3. Navega hasta la carpeta de descargas que deseas convertir (puede ser una materia, sección o año).
+4. La herramienta combinará automáticamente todos los archivos PDF e imágenes presentes en la carpeta en un único archivo PDF.
+
+---
+
 ## 📦 Estructura de carpetas generada
 
 ```
