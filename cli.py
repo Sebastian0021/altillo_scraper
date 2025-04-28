@@ -1,7 +1,7 @@
 import os
 import sys
 import requests
-from main import get_sections_years_links_from_file, save_scrap_analysis, download_links
+from main import get_sections_years_links_from_file, get_sections_years_links, save_scrap_analysis, download_links
 from rich.console import Console
 from rich.table import Table
 from rich.style import Style
@@ -55,16 +55,20 @@ def input_url():
         full_url = BASE_URL + rel_url
         return full_url, rel_url
 
-def download_and_analyze(url, local_filename="page_tmp.html"):
+def download_and_analyze(url, local_filename=None):
     clear()
     print(f"Descargando página: {url}")
     resp = requests.get(url)
     resp.raise_for_status()
-    with open(local_filename, "wb") as f:
-        f.write(resp.content)
+    html_content = resp.content.decode("latin1", errors="replace")
     print("Página descargada. Analizando...")
-    estructura = get_sections_years_links_from_file(local_filename)
-    save_scrap_analysis(estructura, out_path="scrap_tmp.txt")
+    estructura = get_sections_years_links(html_content)
+    # Solo guardar si se pasa local_filename
+    if local_filename:
+        with open(local_filename, "w", encoding="latin1") as f:
+            f.write(html_content)
+    # Guardar scrap analysis solo si se requiere
+    # save_scrap_analysis(estructura, out_path="scrap_tmp.txt")  # Eliminar dependencia por defecto
     return estructura
 
 def menu_secciones(estructura):

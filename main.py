@@ -20,7 +20,55 @@ def try_import_pdf():
 PDF_LIB = try_import_pdf()
 
 # --- Scraping Functions ---
+def get_sections_years_links(html_content: str):
+    """
+    Parsea el contenido HTML en memoria y retorna un dict {seccion: {año: [links]}} de manera dinámica.
+    """
+    from bs4 import BeautifulSoup, NavigableString, Tag
+    import re
+    soup = BeautifulSoup(html_content, 'html.parser')
+    result = {}
+    section_anchors = soup.find_all('a', attrs={'name': True})
+    for section_a in section_anchors:
+        section_name = section_a.get('name').strip()
+        section_title = section_a.get_text(strip=True)
+        parent_li = section_a.find_parent('li')
+        if parent_li:
+            child_ul = parent_li.find('ul')
+            if child_ul:
+                years_links = process_years_section(child_ul)
+                if years_links:
+                    result[section_title] = years_links
+                continue
+        next_ul = None
+        container = section_a.find_parent(['p', 'font', 'b'])
+        if container:
+            sibling = container.find_next_sibling()
+            while sibling and not next_ul:
+                if sibling.name == 'ul':
+                    next_ul = sibling
+                    break
+                sibling = sibling.find_next_sibling()
+        if next_ul:
+            years_links = process_years_section(next_ul)
+            if years_links:
+                result[section_title] = years_links
+    print("Estructura detectada (sección > año > cantidad de links):")
+    for section, years in result.items():
+        print(f"{section}:")
+        for year, links in years.items():
+            print(f"  {year}: {len(links)} links")
+    return result
+
 def get_sections_years_links_from_file(html_path):
+    """
+    Wrapper retrocompatible: lee archivo y llama a get_sections_years_links.
+    """
+    print(f"Analizando archivo local: {html_path}")
+    with open(html_path, encoding="latin1") as f:
+        html_content = f.read()
+    return get_sections_years_links(html_content)
+
     """
     Parsea el archivo local HTML y retorna un dict {seccion: {año: [links]}} de manera dinámica.
     Ahora detecta secciones por sus anclas, independientemente de la estructura HTML.
@@ -272,7 +320,29 @@ def fix_encoding(text):
     except (UnicodeEncodeError, UnicodeDecodeError):
         return text
 
-def save_scrap_analysis(structure, materia="Álgebra CBC", out_path="scrap.txt"):
+def get_scrap_analysis_text(structure, materia="Álgebra CBC"):
+    """
+    Retorna el análisis estructurado como string (no guarda en disco).
+    """
+    lines = [f"Materia: {materia}"]
+    for seccion, anios in structure.items():
+        lines.append(f"\nSección: {seccion}")
+        for anio, links in anios.items():
+            lines.append(f"  Año: {anio} ({len(links)} archivos)")
+            for link_text, link_href in links:
+                lines.append(f"    - {link_text}: {link_href}")
+    return '\n'.join(lines)
+
+def save_scrap_analysis(structure, materia="Álgebra CBC", out_path=None):
+    """
+    Guarda el análisis a disco si se pasa out_path, pero siempre retorna el string.
+    """
+    analysis_str = get_scrap_analysis_text(structure, materia)
+    if out_path:
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(analysis_str)
+    return analysis_str
+
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(f"Materia: {materia}\n\n")
         for section, years in structure.items():
