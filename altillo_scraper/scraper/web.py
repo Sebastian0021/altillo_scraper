@@ -20,7 +20,7 @@ def try_import_pdf():
 PDF_LIB = try_import_pdf()
 
 # --- Scraping Functions ---
-def get_sections_years_links_from_file(html_path=None, html_content=None):
+def get_sections_years_links_from_file(html_path=None, html_content=None, verbose=True):
     """
     Parsea un archivo local HTML o un string HTML y retorna un dict {seccion: {año: [links]}} de manera dinámica.
     Prioridad: html_content > html_path.
@@ -29,9 +29,11 @@ def get_sections_years_links_from_file(html_path=None, html_content=None):
     import re
     if html_content is not None:
         soup = BeautifulSoup(html_content, 'html.parser')
-        print("Analizando HTML recibido en memoria")
+        if verbose:
+            print("Analizando HTML recibido en memoria")
     elif html_path is not None:
-        print(f"Analizando archivo local: {html_path}")
+        if verbose:
+            print(f"Analizando archivo local: {html_path}")
         with open(html_path, encoding="latin1") as f:
             soup = BeautifulSoup(f, 'html.parser')
     else:
@@ -79,11 +81,12 @@ def get_sections_years_links_from_file(html_path=None, html_content=None):
                 result[section_title] = years_links
     
     # Mostrar la estructura detectada
-    print("Estructura detectada (sección > año > cantidad de links):")
-    for section, years in result.items():
-        print(f"{section}:")
-        for year, links in years.items():
-            print(f"  {year}: {len(links)} links")
+    if verbose:
+        print("Estructura detectada (sección > año > cantidad de links):")
+        for section, years in result.items():
+            print(f"{section}:")
+            for year, links in years.items():
+                print(f"  {year}: {len(links)} links")
     return result
 
 def process_years_section(ul_element):

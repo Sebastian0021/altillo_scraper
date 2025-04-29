@@ -7,6 +7,9 @@ from rich.console import Console
 from rich.table import Table
 from rich.style import Style
 import readchar
+from rich.live import Live
+from rich.panel import Panel
+from rich.align import Align
 
 BASE_URL = "https://www.altillo.com/examenes/"
 
@@ -15,28 +18,33 @@ console = Console()
 def menu_dinamico_rich(opciones, titulo="Seleccione una opción:"):
     '''
     Muestra un menú navegable con flechas y Rich. Devuelve el índice de la opción seleccionada.
+    Ahora usa Live(screen=True) para mejorar la experiencia en Windows CMD.
     '''
     seleccion = 0
-    while True:
-        console.clear()
-        console.rule(f"[bold cyan]{titulo}")
+    def render_menu():
+        lines = [f"[bold cyan]{titulo}"]
         for i, opcion in enumerate(opciones):
             if i == seleccion:
-                console.print(f"> [underline][bold green]{opcion}[/bold green][/underline]")
+                lines.append(f"> [underline][bold green]{opcion}[/bold green][/underline]")
             else:
-                console.print(f"  {opcion}")
-        # Barra decorativa SIEMPRE visible abajo
-        console.rule("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
-        key = readchar.readkey()
-        if key == readchar.key.UP:
-            seleccion = (seleccion - 1) % len(opciones)
-        elif key == readchar.key.DOWN:
-            seleccion = (seleccion + 1) % len(opciones)
-        elif key == readchar.key.ENTER or key == "\r" or key == "\n":
-            return seleccion
-        elif key == readchar.key.CTRL_C:
-            console.print("[red]Cancelado por el usuario.[/red]")
-            sys.exit(0)
+                lines.append(f"  {opcion}")
+        lines.append("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
+        # Panel para centrar y evitar overflow
+        return Panel(Align.center("\n".join(lines), vertical="middle"), padding=(1,2))
+
+    with Live(render_menu(), screen=True, refresh_per_second=10, transient=False) as live:
+        while True:
+            key = readchar.readkey()
+            if key == readchar.key.UP:
+                seleccion = (seleccion - 1) % len(opciones)
+            elif key == readchar.key.DOWN:
+                seleccion = (seleccion + 1) % len(opciones)
+            elif key == readchar.key.ENTER or key == "\r" or key == "\n":
+                return seleccion
+            elif key == readchar.key.CTRL_C:
+                console.print("[red]Cancelado por el usuario.[/red]")
+                sys.exit(0)
+            live.update(render_menu())
 
 def clear():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -48,7 +56,7 @@ def input_url():
         console.print("[white]Ingrese la parte de la URL de la página de los parciales de altillo.com luego de 'https://www.altillo.com/examenes/'[/white]", style="bold")
         console.print("")
         console.print("Ejemplo: uba/cbc/algebra/index.asp -> https://www.altillo.com/examenes/uba/cbc/algebra/index.asp", style="dim")
-        console.rule("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
+        
         rel_url = console.input("[bold yellow]Ruta[/bold yellow]: ").strip()
         if not rel_url:
             console.print("[red]La ruta no puede estar vacía. Intente nuevamente.[/red]")
@@ -63,25 +71,30 @@ def download_and_analyze(url):
     resp.raise_for_status()
     html_content = resp.content.decode('latin1', errors='replace')
     print("Página descargada. Analizando...")
-    estructura = get_sections_years_links_from_file(html_content=html_content)
+    estructura = get_sections_years_links_from_file(html_content=html_content, verbose=False)
     return estructura
 
 def menu_secciones(estructura):
     secciones = list(estructura.keys())
     opciones = secciones + ["Volver al menú principal"]
     while True:
+        clear()
         idx = menu_dinamico_rich(opciones, titulo="Seleccione la sección:")
         if idx == len(opciones) - 1:
+            clear()
             return "menu_principal"
         else:
+            clear()
             return secciones[idx]
 
 def menu_anios(estructura, seccion):
     anios = sorted(list(estructura[seccion].keys()))
     opciones = [f"{anio}" for anio in anios] + ["Descargar TODOS los años", "Descargar un rango", "Descargar varios años", "Volver"]
     while True:
+        clear()
         seleccion = menu_dinamico_rich(opciones, titulo=f"Sección: {seccion}\nSeleccione el/los año/s a descargar:")
         if seleccion == len(opciones) - 1:  # Volver
+            clear()
             return None
         elif seleccion == len(opciones) - 2:  # Descargar varios años
             entrada = console.input("[bold yellow]Ingrese años separados por coma (ej: 2020,2022,2023): [/bold yellow]").strip()
@@ -115,14 +128,19 @@ def menu_parciales(estructura, seccion, anio, permitir_descarga_masiva=False):
     if permitir_descarga_masiva:
         opciones.insert(-1, "Descargar TODOS los parciales de TODOS los años SIN preguntar")
     while True:
+        clear()
         seleccion = menu_dinamico_rich(opciones, titulo=f"Sección: {seccion} | Año: {anio}\nSeleccione los parciales a descargar:")
         if permitir_descarga_masiva and seleccion == len(opciones) - 2:
+            clear()
             return "descarga_masiva"
         if seleccion == len(opciones) - 1:  # Volver
+            clear()
             return None
         elif seleccion == len(opciones) - (3 if permitir_descarga_masiva else 2):  # Descargar TODOS
+            clear()
             return links
         else:
+            clear()
             return [links[seleccion]]
 
 def navegar_carpetas_y_generar_pdf(base_dir='descargas', solo_enunciados=False):
@@ -146,7 +164,7 @@ def navegar_carpetas_y_generar_pdf(base_dir='descargas', solo_enunciados=False):
             opciones,
             titulo=f"[bold white]Carpeta actual:[/bold white] [bold cyan]{actual}[/bold cyan]\n[dim]Navegue con flechas y seleccione acción:[/dim]"
         )
-        console.rule("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
+        
         if seleccion < len(dirs):
             actual = os.path.join(actual, dirs[seleccion])
             continue
@@ -156,6 +174,7 @@ def navegar_carpetas_y_generar_pdf(base_dir='descargas', solo_enunciados=False):
         if acciones[accion_idx].startswith("[bold green]"):
             generar_pdf_seccion(actual, solo_enunciados=solo_enunciados)
             console.input("\nPresione Enter para continuar...")
+            clear()
             continue
         elif acciones[accion_idx].startswith("[yellow]"):
             actual = os.path.dirname(actual)
@@ -164,6 +183,7 @@ def navegar_carpetas_y_generar_pdf(base_dir='descargas', solo_enunciados=False):
             return
 
 def main():
+    clear()
     opciones_menu = [
         "Descargar exámenes",
         "Descargar solo el enunciado (primera imagen) de cada parcial",
@@ -172,7 +192,7 @@ def main():
     ]
     while True:
         seleccion = menu_dinamico_rich(opciones_menu, titulo="Altillo Scraper CLI")
-        console.rule("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
+        
         if seleccion == 0:  # Descargar exámenes (todas las imágenes)
             url, rel_url = input_url()
             try:
@@ -181,6 +201,7 @@ def main():
                 console.print(f"[red]Error al descargar o analizar la página: {e}[/red]")
             seccion = menu_secciones(estructura)
             if seccion == "menu_principal":
+                clear()
                 continue
             anios = menu_anios(estructura, seccion)
             if not anios:
@@ -203,6 +224,7 @@ def main():
                     base_url = BASE_URL + os.path.dirname(rel_url) + "/"
                     download_links(seleccionados, base_url, destino, solo_primera_imagen=True)
                     console.input(f"[green]\nDescarga finalizada para {anio}. Presione Enter para continuar...[/green]")
+                    clear()
                 if descarga_masiva:
                     # Descargar todos los enunciados (primera imagen) de todos los años sin preguntar más
                     for anio in anios:
@@ -217,6 +239,7 @@ def main():
                         base_url = BASE_URL + os.path.dirname(rel_url) + "/"
                         download_links(links_todos, base_url, destino, solo_primera_imagen=True)
                         console.input(f"[green]\nDescarga finalizada para {anio}. Presione Enter para continuar...[/green]")
+                        clear()
             else:
                 for anio in anios:
                     seleccionados = menu_parciales(estructura, seccion, anio)
@@ -230,6 +253,7 @@ def main():
                     base_url = BASE_URL + os.path.dirname(rel_url) + "/"
                     download_links(seleccionados, base_url, destino)
                     console.input(f"[green]\nDescarga finalizada para {anio}. Presione Enter para continuar...[/green]")
+                    clear()
         elif seleccion == 1:  # Descargar solo primera imagen (posible enunciado)
             url, rel_url = input_url()
             try:
@@ -260,6 +284,7 @@ def main():
                     base_url = BASE_URL + os.path.dirname(rel_url) + "/"
                     download_links(seleccionados, base_url, destino, solo_primera_imagen=True)
                     console.input(f"[green]\nDescarga finalizada para {anio}. Presione Enter para continuar...[/green]")
+                    clear()
                 if descarga_masiva:
                     # Descargar todos los enunciados (primera imagen) de todos los años sin preguntar más
                     for anio in anios:
@@ -274,6 +299,7 @@ def main():
                         base_url = BASE_URL + os.path.dirname(rel_url) + "/"
                         download_links(links_todos, base_url, destino, solo_primera_imagen=True)
                         console.input(f"[green]\nDescarga finalizada para {anio}. Presione Enter para continuar...[/green]")
+                        clear()
             else:
                 for anio in anios:
                     seleccionados = menu_parciales(estructura, seccion, anio)
@@ -287,6 +313,7 @@ def main():
                     base_url = BASE_URL + os.path.dirname(rel_url) + "/"
                     download_links(seleccionados, base_url, destino, solo_primera_imagen=True)
                     console.input(f"[green]\nDescarga finalizada para {anio}. Presione Enter para continuar...[/green]")
+                    clear()
         elif seleccion == 2:  # Generar PDF a partir de carpeta descargada
             # Preguntar si quiere solo enunciados o PDF completo
             opciones_pdf = [
