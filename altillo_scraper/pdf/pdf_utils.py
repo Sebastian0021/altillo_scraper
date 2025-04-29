@@ -7,7 +7,7 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeEl
 
 console = Console()
 
-def generar_pdf_seccion(seccion_folder, salida_pdf=None):
+def generar_pdf_seccion(seccion_folder, salida_pdf=None, solo_enunciados=False):
     """
     Genera un único PDF combinando todos los PDFs y las imágenes (agrupadas por subcarpeta) de la carpeta fuente.
     Args:
@@ -30,42 +30,73 @@ def generar_pdf_seccion(seccion_folder, salida_pdf=None):
     # Si hay imágenes en la carpeta principal, conviértelas a PDF temporal
     if imagenes_principales:
         imagenes_principales.sort()
+        if solo_enunciados:
+            imagenes_principales = imagenes_principales[:1]
         temp_fd, temp_pdf = tempfile.mkstemp(suffix='.pdf')
         os.close(temp_fd)
         with open(temp_pdf, 'wb') as f:
             f.write(img2pdf.convert(imagenes_principales))
         temp_files.append(temp_pdf)
         pdfs.append(temp_pdf)
-    # 2. Subcarpetas (parciales)
-    for sub in sorted(os.listdir(seccion_folder)):
-        sub_path = os.path.join(seccion_folder, sub)
-        if os.path.isdir(sub_path):
-            imagenes = []
-            sub_pdfs = []
-            for fname in sorted(os.listdir(sub_path)):
-                ruta = os.path.join(sub_path, fname)
-                if os.path.isfile(ruta):
-                    if fname.lower().endswith('.pdf'):
-                        sub_pdfs.append(ruta)
-                    elif fname.lower().endswith(imagenes_ext):
-                        imagenes.append(ruta)
-            # Si hay imágenes, conviértelas a PDF temporal
-            if imagenes:
-                imagenes.sort()
-                temp_fd, temp_pdf = tempfile.mkstemp(suffix='.pdf')
-                os.close(temp_fd)
-                with open(temp_pdf, 'wb') as f:
-                    f.write(img2pdf.convert(imagenes))
-                temp_files.append(temp_pdf)
-                pdfs.append(temp_pdf)
-            # Agrega PDFs de la subcarpeta
-            sub_pdfs.sort()
-            pdfs.extend(sub_pdfs)
+    def recolectar_primera_imagen_hojas(carpeta):
+        """Busca recursivamente la primera imagen de cada subcarpeta hoja (sin subcarpetas) que tenga imágenes."""
+        imagenes_encontradas = []
+        for root, dirs, files in os.walk(carpeta):
+            # Es hoja si no tiene subcarpetas
+            if not dirs:
+                imagenes = sorted([os.path.join(root, f) for f in files if f.lower().endswith(imagenes_ext)])
+                if imagenes:
+                    imagenes_encontradas.append(imagenes[0])
+        return imagenes_encontradas
+
+    def recolectar_todas_las_imagenes_recursiva(carpeta):
+        """Busca recursivamente todas las imágenes en todos los niveles y retorna una lista ordenada."""
+        todas = []
+        for root, dirs, files in os.walk(carpeta):
+            imagenes = sorted([os.path.join(root, f) for f in files if f.lower().endswith(imagenes_ext)])
+            todas.extend(imagenes)
+        return todas
+
+    if solo_enunciados:
+        # Solo la primera imagen de cada subcarpeta hoja (parcial)
+        todas_las_imagenes = recolectar_primera_imagen_hojas(seccion_folder)
+        console.print(f"[cyan]Total de enunciados (primeras imágenes de parciales) encontrados: {len(todas_las_imagenes)}[/cyan]")
+        for img in todas_las_imagenes:
+            console.print(f"[dim]Enunciado:[/dim] {img}")
+        if todas_las_imagenes:
+            temp_fd, temp_pdf = tempfile.mkstemp(suffix='.pdf')
+            os.close(temp_fd)
+            with open(temp_pdf, 'wb') as f:
+                f.write(img2pdf.convert(todas_las_imagenes))
+            temp_files.append(temp_pdf)
+            pdfs.append(temp_pdf)
+    else:
+        # Recolecta todas las imágenes recursivamente
+        todas_las_imagenes = recolectar_todas_las_imagenes_recursiva(seccion_folder)
+        console.print(f"[cyan]Total de imágenes encontradas: {len(todas_las_imagenes)}[/cyan]")
+        for img in todas_las_imagenes:
+            console.print(f"[dim]Imagen:[/dim] {img}")
+        if todas_las_imagenes:
+            temp_fd, temp_pdf = tempfile.mkstemp(suffix='.pdf')
+            os.close(temp_fd)
+            with open(temp_pdf, 'wb') as f:
+                f.write(img2pdf.convert(todas_las_imagenes))
+            temp_files.append(temp_pdf)
+            pdfs.append(temp_pdf)
+        # PDFs sueltos recursivos (además de imágenes)
+        for root, dirs, files in os.walk(seccion_folder):
+            pdfs_sueltos = sorted([os.path.join(root, f) for f in files if f.lower().endswith('.pdf')])
+            pdfs.extend(pdfs_sueltos)
+    pdfs.sort()
+
     pdfs.sort()
 
     if not salida_pdf:
         nombre = os.path.basename(os.path.normpath(seccion_folder))
-        salida_pdf = os.path.join(seccion_folder, f"{nombre}.pdf")
+        if solo_enunciados:
+            salida_pdf = os.path.join(seccion_folder, f"{nombre} (solo-enunciado).pdf")
+        else:
+            salida_pdf = os.path.join(seccion_folder, f"{nombre}.pdf")
     merger = PdfMerger()
     with Progress(
         SpinnerColumn(),
@@ -79,7 +110,19 @@ def generar_pdf_seccion(seccion_folder, salida_pdf=None):
         merge_task = progress.add_task("Uniendo PDFs...", total=len(pdfs))
         for pdf in pdfs:
             try:
-                merger.append(pdf)
+                if solo_enunciados:
+                    if pdf in temp_files:
+                        # PDF generado a partir de imágenes: agregar TODAS las páginas
+                        merger.append(pdf)
+                    else:
+                        # Solo la primera página de cada PDF suelto
+                        with open(pdf, 'rb') as f:
+                            from PyPDF2 import PdfReader
+                            reader = PdfReader(f)
+                            if len(reader.pages) > 0:
+                                merger.append(reader, pages=(0,1))
+                else:
+                    merger.append(pdf)
                 progress.console.print(f"[green]✔ Agregado:[/green] {os.path.basename(pdf)}")
             except Exception as e:
                 progress.console.print(f"[red]✖ No se pudo agregar {pdf}: {e}[/red]")

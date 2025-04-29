@@ -312,7 +312,7 @@ from rich.console import Console
 
 console = Console()
 
-def download_links(links, base_url, out_dir):
+def download_links(links, base_url, out_dir, solo_primera_imagen=False):
     os.makedirs(out_dir, exist_ok=True)
     with Progress(
         SpinnerColumn(),
@@ -351,14 +351,23 @@ def download_links(links, base_url, out_dir):
                     exam_dir = os.path.join(out_dir, exam_name)
                     os.makedirs(exam_dir, exist_ok=True)
                     parcial_name = str(link_text)[:22]
-                    img_task = progress.add_task(f"Imágenes de {parcial_name}", total=len(img_tags))
-                    for img in img_tags:
+                    if solo_primera_imagen:
+                        img_tags = img_tags[:1]
+                        mensaje_extra = ' (posible enunciado)'
+                    else:
+                        mensaje_extra = ''
+                    img_task = progress.add_task(f"Imágenes de {parcial_name}{mensaje_extra}", total=len(img_tags))
+                    for idx, img in enumerate(img_tags, start=1):
                         img_src = img.get('src')
                         if not img_src:
                             progress.update(img_task, advance=1)
                             continue
                         img_url = img_src if img_src.startswith('http') else base_url + img_src
-                        img_fname = os.path.join(exam_dir, img_src.split('/')[-1])
+                        # Guardar como 1.jpg, 2.jpg, ... según el orden
+                        ext = os.path.splitext(img_src)[-1].lower()
+                        if ext not in ['.jpg', '.jpeg', '.png', '.gif']:
+                            ext = '.jpg'  # fallback
+                        img_fname = os.path.join(exam_dir, f"{idx}{ext}")
                         try:
                             img_resp = requests.get(img_url)
                             img_resp.raise_for_status()
