@@ -3,9 +3,12 @@
 Scraper universal para descargar exámenes de cualquier materia disponible en [Altillo.com](https://www.altillo.com/examenes/), con organización automática por materia, sección y año. Interfaz interactiva por consola.
 
 > [!IMPORTANT]
+>
 > **Requisito:** Debes tener [Python 3.8+](https://www.python.org/downloads/) instalado en tu computadora.
 >
 > _En el futuro se planea ofrecer un ejecutable para usuarios sin experiencia en la terminal o entornos de desarrollo._
+
+---
 
 ## 📋 ¿Qué hace este scraper?
 
@@ -38,21 +41,34 @@ El proyecto incluye una herramienta integrada en la CLI que permite generar un a
 
 ---
 
-## 🛠️ Instalación y primer uso
+## 🚀 Instalación y ejecución
 
-1. **(Opcional pero recomendado) Crea un entorno virtual:**
+1. **Clona el repositorio:**
+
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # En Windows: venv\Scripts\activate
+   git clone https://github.com/Sebastian0021/altillo_scraper.git
+   cd altillo-scrapper
    ```
+
 2. **Instala las dependencias:**
+
    ```bash
    pip install -r requirements.txt
    ```
-3. **Ejecuta la interfaz CLI:**
+
+   Si usas Anaconda:
+
    ```bash
-   python cli.py
+   conda create -n altillo-scraper python=3.10
+   conda activate altillo-scraper
+   pip install -r requirements.txt
    ```
+
+3. **Ejecuta la CLI profesional:**
+   ```bash
+   python -m altillo_scraper.cli.main
+   ```
+   Esto lanzará el menú interactivo para descargar exámenes o generar PDFs desde carpetas descargadas.
 
 ---
 

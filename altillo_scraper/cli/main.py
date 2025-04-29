@@ -1,7 +1,8 @@
 import os
 import sys
 import requests
-from main import get_sections_years_links_from_file, save_scrap_analysis, download_links
+from altillo_scraper.pdf.pdf_utils import generar_pdf_seccion
+from altillo_scraper.scraper.web import get_sections_years_links_from_file, save_scrap_analysis, download_links
 from rich.console import Console
 from rich.table import Table
 from rich.style import Style
@@ -120,8 +121,6 @@ def menu_parciales(estructura, seccion, anio):
         else:
             return [links[seleccion]]
 
-from pdf_utils import generar_pdf_seccion
-
 def navegar_carpetas_y_generar_pdf(base_dir='descargas'):
     actual = base_dir
     while True:
@@ -143,16 +142,12 @@ def navegar_carpetas_y_generar_pdf(base_dir='descargas'):
             opciones,
             titulo=f"[bold white]Carpeta actual:[/bold white] [bold cyan]{actual}[/bold cyan]\n[dim]Navegue con flechas y seleccione acción:[/dim]"
         )
-        # Barra inferior de autoría
         console.rule("[magenta]Hecho por: [cyan]https://sebastianpenaloza.com[/cyan][/magenta]")
-        # Si selecciona una carpeta, navega
         if seleccion < len(dirs):
             actual = os.path.join(actual, dirs[seleccion])
             continue
-        # Si selecciona la línea separadora, no hace nada
         if opciones[seleccion].startswith("[dim]"):
             continue
-        # Acciones
         accion_idx = seleccion - (len(dirs) + (1 if dirs else 0))
         if acciones[accion_idx].startswith("[bold green]"):
             generar_pdf_seccion(actual)
@@ -163,7 +158,6 @@ def navegar_carpetas_y_generar_pdf(base_dir='descargas'):
             continue
         elif acciones[accion_idx].startswith("[red]"):
             return
-
 
 def main():
     opciones_menu = ["Descargar exámenes", "Generar PDF a partir de carpeta descargada", "Salir"]
@@ -185,7 +179,6 @@ def main():
                 anios = menu_anios(estructura, seccion)
                 if anios is None:
                     continue  # Volver a seleccionar sección
-                # Soportar lista de años
                 for anio in anios:
                     seleccionados = menu_parciales(estructura, seccion, anio)
                     if seleccionados is None:
@@ -198,14 +191,11 @@ def main():
                     base_url = BASE_URL + os.path.dirname(rel_url) + "/"
                     download_links(seleccionados, base_url, destino)
                     console.input(f"[green]\nDescarga finalizada para {anio}. Presione Enter para continuar...[/green]")
-                # Al finalizar todos los años, vuelve a menú de secciones para seguir descargando
-
         elif seleccion == 1:  # Generar PDF
             navegar_carpetas_y_generar_pdf()
         elif seleccion == 2:  # Salir
             console.print("¡Hasta luego!", style="bold green")
             break
-
 
 if __name__ == "__main__":
     main()
