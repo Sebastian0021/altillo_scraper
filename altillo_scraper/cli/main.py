@@ -182,9 +182,10 @@ def menu_parciales(estructura, seccion, anio, materia, permitir_descarga_masiva=
     separadores = []
     if opciones:
         separadores.append(len(opciones))
-    opciones += ["Descargar TODOS los parciales del año", "Volver"]
     if permitir_descarga_masiva:
-        opciones.insert(-2, "Descargar TODOS los parciales de TODOS los años SIN preguntar")
+        opciones += ["Descargar TODOS los parciales de TODOS los años SIN preguntar", "Descargar TODOS los parciales del año", "Volver"]
+    else:
+        opciones += ["Descargar TODOS los parciales del año", "Volver"]
     materia_cap = materia.capitalize()
     seccion_cap = seccion.capitalize()
     while True:
@@ -193,13 +194,13 @@ def menu_parciales(estructura, seccion, anio, materia, permitir_descarga_masiva=
         console = Console()
         console.print()  # Línea en blanco visual
         seleccion = menu_dinamico_rich(opciones, titulo=f"[center]{header}[/center]\nAño: {anio}\nSeleccione los parciales a descargar:", separadores=separadores)
-        if permitir_descarga_masiva and seleccion == len(opciones) - 2:
+        if permitir_descarga_masiva and seleccion == len(opciones) - 3:
             clear()
             return "descarga_masiva"
         if seleccion == len(opciones) - 1:  # Volver
             clear()
             return None
-        elif seleccion == len(opciones) - (3 if permitir_descarga_masiva else 2):  # Descargar TODOS
+        elif (permitir_descarga_masiva and seleccion == len(opciones) - 2) or (not permitir_descarga_masiva and seleccion == len(opciones) - 2):
             clear()
             return links
         else:
