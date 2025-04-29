@@ -15,21 +15,54 @@ def generar_pdf_seccion(seccion_folder, salida_pdf=None):
         salida_pdf (str, opcional): Ruta del PDF final. Si es None, se genera nombre automático.
     """
 
-    imagenes_ext = ('.jpg', '.jpeg', '.png')
+    imagenes_ext = ('.jpg', '.jpeg', '.png', '.gif')
     pdfs = []
     temp_files = []
-    # 1. PDFs sueltos en la carpeta fuente
+    # 1. PDFs sueltos e imágenes en la carpeta fuente
+    imagenes_principales = []
     for fname in sorted(os.listdir(seccion_folder)):
         ruta = os.path.join(seccion_folder, fname)
-        if os.path.isfile(ruta) and fname.lower().endswith('.pdf'):
-            pdfs.append(ruta)
+        if os.path.isfile(ruta):
+            if fname.lower().endswith('.pdf'):
+                pdfs.append(ruta)
+            elif fname.lower().endswith(imagenes_ext):
+                imagenes_principales.append(ruta)
+    # Si hay imágenes en la carpeta principal, conviértelas a PDF temporal
+    if imagenes_principales:
+        imagenes_principales.sort()
+        temp_fd, temp_pdf = tempfile.mkstemp(suffix='.pdf')
+        os.close(temp_fd)
+        with open(temp_pdf, 'wb') as f:
+            f.write(img2pdf.convert(imagenes_principales))
+        temp_files.append(temp_pdf)
+        pdfs.append(temp_pdf)
     # 2. Subcarpetas (parciales)
     for sub in sorted(os.listdir(seccion_folder)):
         sub_path = os.path.join(seccion_folder, sub)
         if os.path.isdir(sub_path):
             imagenes = []
             sub_pdfs = []
+            for fname in sorted(os.listdir(sub_path)):
+                ruta = os.path.join(sub_path, fname)
+                if os.path.isfile(ruta):
+                    if fname.lower().endswith('.pdf'):
+                        sub_pdfs.append(ruta)
+                    elif fname.lower().endswith(imagenes_ext):
+                        imagenes.append(ruta)
+            # Si hay imágenes, conviértelas a PDF temporal
+            if imagenes:
+                imagenes.sort()
+                temp_fd, temp_pdf = tempfile.mkstemp(suffix='.pdf')
+                os.close(temp_fd)
+                with open(temp_pdf, 'wb') as f:
+                    f.write(img2pdf.convert(imagenes))
+                temp_files.append(temp_pdf)
+                pdfs.append(temp_pdf)
+            # Agrega PDFs de la subcarpeta
+            sub_pdfs.sort()
+            pdfs.extend(sub_pdfs)
     pdfs.sort()
+
     if not salida_pdf:
         nombre = os.path.basename(os.path.normpath(seccion_folder))
         salida_pdf = os.path.join(seccion_folder, f"{nombre}.pdf")

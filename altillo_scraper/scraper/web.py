@@ -236,7 +236,6 @@ if __name__ == "__main__":
     carpeta = "descargas/algebra/primeros_parciales/2024"
     generar_pdf_seccion(carpeta)
 
-
 # --- Main Execution ---
 def main():
     print("Iniciando scraper de exámenes de Álgebra CBC...")
@@ -301,7 +300,6 @@ def save_scrap_analysis(structure, materia="Álgebra CBC", out_path=None):
         print(f"\nAnálisis estructurado guardado en {out_path}\n")
     else:
         return result_str
-
 
 
 import os
@@ -378,7 +376,6 @@ def download_links(links, base_url, out_dir):
             progress.update(task, advance=1)
 
 
-
 def download_and_analyze(url, local_filename=None):
     clear()
     print(f"Descargando página: {url}")
@@ -399,11 +396,3 @@ if __name__ == "__main__":
     seccion = "Segundos Parciales"
     anio = "2024"
     base_url = "https://www.altillo.com/examenes/uba/cbc/algebra/"
-    if seccion in estructura and anio in estructura[seccion]:
-        links = estructura[seccion][anio]
-        out_dir = os.path.join("descargas", "segundos_parciales", anio)
-        download_links(links, base_url, out_dir)
-    else:
-        print(f"No se encontraron links para {seccion} año {anio}")
-    # (El resto del main queda comentado o en modo test)
-
