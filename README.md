@@ -30,14 +30,18 @@ Scraper universal para descargar exámenes de cualquier materia disponible en [A
 
 ## 📝 Generación de PDF desde carpetas descargadas
 
-El proyecto incluye una herramienta integrada en la CLI que permite generar un archivo PDF unificado a partir de los exámenes e imágenes descargados en una carpeta específica.
+La CLI permite generar un PDF unificado a partir de los exámenes e imágenes descargados en cualquier carpeta (materia, sección o año). Ahora puedes elegir entre:
+
+- **PDF completo:** incluye todas las imágenes y PDFs de la estructura seleccionada.
+- **PDF solo enunciados:** solo la primera imagen de cada parcial (ideal para repasar enunciados rápidamente). El archivo generado tendrá el sufijo `(solo-enunciado)`. 
 
 **¿Cómo se utiliza?**
 
-1. Descarga los exámenes normalmente utilizando la CLI.
+1. Descarga los exámenes normalmente utilizando la CLI (puedes usar descarga masiva o selectiva).
 2. Selecciona la opción correspondiente en el menú para "Generar PDF".
-3. Navega hasta la carpeta de descargas que deseas convertir (puede ser una materia, sección o año).
-4. La herramienta combinará automáticamente todos los archivos PDF e imágenes presentes en la carpeta en un único archivo PDF.
+3. Elige si quieres un PDF completo o solo de enunciados.
+4. Navega hasta la carpeta de descargas que deseas convertir.
+5. El PDF se generará automáticamente, combinando el contenido según tu selección.
 
 ---
 
@@ -141,12 +145,6 @@ Descargando archivos...
 ┃███████████████████████████████████████┃ 10/10 00:05
 ✔ Archivo descargado: alg_2024_p1a.pdf
 ```
-
----
-
-> ```bash
-> python cli.py
-> ```
 
 ---
 
