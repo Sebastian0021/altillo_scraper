@@ -1,6 +1,6 @@
 # altillo_scraper 📚
 
-Scraper universal para descargar exámenes de cualquier materia disponible en [Altillo.com](https://www.altillo.com/examenes/), con organización automática por materia, sección y año. Interfaz interactiva por consola.
+Scraper para descargar exámenes de cualquier materia disponible en [Altillo.com](https://www.altillo.com/examenes/), con organización automática por materia, sección y año. Interfaz interactiva por consola.
 
 > [!IMPORTANT]
 >
@@ -33,7 +33,7 @@ Scraper universal para descargar exámenes de cualquier materia disponible en [A
 La CLI permite generar un PDF unificado a partir de los exámenes e imágenes descargados en cualquier carpeta (materia, sección o año). Ahora puedes elegir entre:
 
 - **PDF completo:** incluye todas las imágenes y PDFs de la estructura seleccionada.
-- **PDF solo enunciados:** solo la primera imagen de cada parcial (ideal para repasar enunciados rápidamente). El archivo generado tendrá el sufijo `(solo-enunciado)`. 
+- **PDF solo enunciados:** solo la primera imagen de cada parcial (ideal para repasar enunciados rápidamente). El archivo generado tendrá el sufijo `(solo-enunciado)`.
 
 **¿Cómo se utiliza?**
 
@@ -68,7 +68,7 @@ La CLI permite generar un PDF unificado a partir de los exámenes e imágenes de
    pip install -r requirements.txt
    ```
 
-3. **Ejecuta la CLI profesional:**
+3. **Ejecuta la CLI:**
    ```bash
    python -m altillo_scraper.cli.main
    ```
